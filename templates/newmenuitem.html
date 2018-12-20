@@ -6,8 +6,21 @@
 	</div>
 	<div class="row banner menu">
 		<div class="col-md-11 col-md-offset-1 padding-none">
-			<h1>Insert New Item</h1>
+			<h1>Create New Item</h1>
 		</div>
+	</div>
+	<div class = 'flash'>
+		      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+          
+        <ul>
+        {% for message in messages %}
+            <li> <strong> {{ message }} </strong> </li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+    {% endwith %}
+
 	</div>
 	<div class="row">
 		<div class="col-md-6 col-md-offset-1 padding-top">
@@ -27,7 +40,7 @@
 					<label for="item">item:</label>
 					<div class="radio">
 					  <label>
-					    <input type="radio" name="item" id="item1" value="Beauty">Beauty
+					    <input type="radio" name="item" id="item1" value="Beauty" checked="true">Beauty
 					  </label>
 					</div>
 					<div class="radio">

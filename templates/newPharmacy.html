@@ -9,10 +9,23 @@
 			<h1>New Pharmacy</h1>
 		</div>
 	</div>
+	<div class = 'flash'>
+		      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+          
+        <ul>
+        {% for message in messages %}
+            <li> <strong> {{ message }} </strong> </li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+    {% endwith %}
+
+	</div>
 	<div class="row">
-		<div class="col-md-6 col-md-offset-1 padding-top">
-			<form action="#" method = "post">
-				<div class="form-group">
+		<div class="col-md-6 col-md-offset-1 padding-top" class="form-horizontal">
+			<form action="#" method = "post" >
+				<div class="form-group" >
 				<label for="name">Name:</label>
 				<input type ="text" class="form-control" maxlength="100" name="name">
 				<div class="padding-bottom"></div>

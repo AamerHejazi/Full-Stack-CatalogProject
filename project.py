@@ -4,6 +4,7 @@ from sqlalchemy import create_engine, asc
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, Pharmacy, MenuItem, User
 from flask import session as login_session
+import ctypes
 import random
 import string
 
@@ -158,9 +159,8 @@ def getUserID(email):
     try:
         user = session.query(User).filter_by(email=email).one()
         return user.id
-    except ImportError:
-        return None
-
+    except Exception as e:
+        raise e
 
 # DISCONNECT - Revoke a current user's token and reset their login_session
 
@@ -181,8 +181,8 @@ def gdisconnect():
             json.dumps('Current user not connected.'), 401)
         response.headers['Content-Type'] = 'application/json'
         return response
-    url = """'https://accounts.google.com/o/oauth2/revoke?token=%s'
-    %  login_session['access_token']"""
+    url = ('https://accounts.google.com/o/oauth2/revoke?token=%s'
+           % login_session['access_token'])
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
     print
@@ -190,11 +190,6 @@ def gdisconnect():
     print
     result
     if result['status'] == '200':
-        # del login_session['access_token']
-        # del login_session['gplus_id']
-        # del login_session['username']
-        # del login_session['email']
-        # del login_session['picture']
         response = make_response(json.dumps('Successfully disconnected.'), 200)
         response.headers['Content-Type'] = 'application/json'
         return response
@@ -245,12 +240,16 @@ def newPharmacy():
         return redirect('/login')
 
     if request.method == 'POST':
-        newPharmacy = Pharmacy(
-            name=request.form['name'], user_id=login_session['user_id'])
-        session.add(newPharmacy)
-        flash('New Pharmacy %s Successfully Created' % newPharmacy.name)
-        session.commit()
-        return redirect(url_for('showPharmacies'))
+        if not request.form['name'] or request.form['name'].isspace():
+            flash('Please fill the name of the restaurant')
+            return redirect(url_for('newPharmacy'))
+        else:
+            newPharmacy = Pharmacy(
+                name=request.form['name'], user_id=login_session['user_id'])
+            session.add(newPharmacy)
+            flash('New Pharmacy %s Successfully Created' % newPharmacy.name)
+            session.commit()
+            return redirect(url_for('showPharmacies'))
     else:
         return render_template('newPharmacy.html')
 
@@ -260,6 +259,8 @@ def newPharmacy():
 
 @app.route('/pharmacy/<int:pharmacy_id>/edit/', methods=['GET', 'POST'])
 def editPharmacy(pharmacy_id):
+    if 'username' not in login_session:
+        return redirect('/login')
     editedPharmacy = session.query(
         Pharmacy).filter_by(id=pharmacy_id).one()
     if request.method == 'POST':
@@ -274,6 +275,8 @@ def editPharmacy(pharmacy_id):
 # Delete a pharmacy
 @app.route('/pharmacy/<int:pharmacy_id>/delete/', methods=['GET', 'POST'])
 def deletePharmacy(pharmacy_id):
+    if 'username' not in login_session:
+        return redirect('/login')
     pharmacyToDelete = session.query(
         Pharmacy).filter_by(id=pharmacy_id).one()
     if request.method == 'POST':
@@ -309,24 +312,44 @@ def showMenu(pharmacy_id):
 # Create a new menu item
 @app.route('/pharmacy/<int:pharmacy_id>/menu/new/', methods=['GET', 'POST'])
 def newMenuItem(pharmacy_id):
-    pharmacy = session.query(Pharmacy).filter_by(id=pharmacy_id).one()
     if request.method == 'POST':
-        newItem = MenuItem(name=request.form['name'],
-                           description=request.form['description'],
-                           price=request.form['price'],
-                           item=request.form['item'],
-                           pharmacy_id=pharmacy_id,
-                           user_id=pharmacy.user_id)
+        if 'username' not in login_session:
+            return redirect('/login')
+        else:
+            if not request.form['name'] or request.form['name'].isspace():
+                flash('Please fill the name of the new item')
+                return redirect(
+                    url_for('newMenuItem', pharmacy_id=pharmacy_id))
+            if not request.form['description']:
+                flash('Please fill the description of the new item')
+                return redirect(
+                    url_for('newMenuItem', pharmacy_id=pharmacy_id))
+            if request.form['description'].isspace():
+                flash('Please dont use whitespace')
+                return redirect(
+                    url_for('newMenuItem', pharmacy_id=pharmacy_id))
+            if not request.form['price'] or request.form['price'].isspace():
+                flash('Please fill the price of the new item')
+                return redirect(
+                    url_for('newMenuItem', pharmacy_id=pharmacy_id))
+            pharmacy = session.query(Pharmacy).filter_by(id=pharmacy_id).one()
+            newItem = MenuItem(
+                name=request.form['name'],
+                description=request.form['description'],
+                price=request.form['price'], item=request.form['item'],
+                pharmacy_id=pharmacy_id, user_id=pharmacy.user_id)
         session.add(newItem)
         session.commit()
         flash('New Menu %s Item Successfully Created' % (newItem.name))
         return redirect(url_for('showMenu', pharmacy_id=pharmacy_id))
     else:
-        return render_template('newmenuitem.html', pharmacy_id=pharmacy_id)
+        if 'username' not in login_session:
+            return redirect('/login')
+        else:
+            return render_template('newmenuitem.html', pharmacy_id=pharmacy_id)
 
 
 # Edit a menu item
-
 
 @app.route(
     '/pharmacy/<int:pharmacy_id>/menu/<int:menu_id>/edit',
